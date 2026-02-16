@@ -1,12 +1,7 @@
 """
 API endpoints for agent model management and configuration.
-
-Endpoints for:
-- Listing available LLM models
-- Creating user agent configurations
-- Managing user's agents
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -30,78 +25,57 @@ agent_service = AgentService()
 @router.get("/models", response_model=List[LLMModelRead], tags=["Models"])
 @limiter.limit("30 per hour")
 def list_llm_models(
-    request,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    List all available LLM models from Ollama.
-    
-    These models can be used as the base for agent configurations.
-    """
+    """List all available LLM models."""
     return agent_service.get_active_models(db)
 
 
 @router.post("/agents", response_model=AgentConfigRead, status_code=status.HTTP_201_CREATED, tags=["Agents"])
 @limiter.limit("30 per hour")
 def create_agent_config(
-    request,
+    request: Request,
     config_in: AgentConfigCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Create a new custom agent configuration.
-    
-    The user provides a base model and custom system prompt to create a personalized agent.
-    
-    Parameters:
-    - base_model_id: UUID of the LLM model to use
-    - name: Name for this agent configuration
-    - system_prompt: Custom instructions for the agent's behavior
-    - temperature: Creativity level (0-2, default 0.7)
-    """
+    """Create a new custom agent configuration."""
     try:
         return agent_service.import_user_model_config(db, current_user.id, config_in)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error creating agent config")
 
 
 @router.get("/agents", response_model=List[AgentConfigRead], tags=["Agents"])
 @limiter.limit("30 per hour")
 def list_user_agents(
-    request,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Get all agent configurations created by the current user.
-    """
+    """Get all agent configurations for current user."""
     return get_user_agents(db, current_user.id)
 
 
 @router.get("/agents/{agent_id}", response_model=AgentConfigRead, tags=["Agents"])
 @limiter.limit("60 per hour")
 def get_agent(
-    request,
+    request: Request,
     agent_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Get a specific agent configuration.
-    
-    User can only access their own agents.
-    """
+    """Get a specific agent configuration."""
     agent = get_agent_config(db, agent_id)
     if not agent:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
     
-    # Security: Ensure user owns this agent
     if agent.user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this agent")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     
     return agent
 
@@ -109,30 +83,24 @@ def get_agent(
 @router.patch("/agents/{agent_id}", response_model=AgentConfigRead, tags=["Agents"])
 @limiter.limit("30 per hour")
 def update_agent(
-    request,
+    request: Request,
     agent_id: str,
     config_update: AgentConfigUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Update an agent configuration.
-    
-    User can only update their own agents.
-    """
+    """Update an agent configuration."""
     agent = get_agent_config(db, agent_id)
     if not agent:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
     
-    # Security: Ensure user owns this agent
     if agent.user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this agent")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     
     try:
         update_data = config_update.model_dump(exclude_unset=True)
         from app.crud.agents_crud import update_agent_config
-        updated_agent = update_agent_config(db, agent_id, update_data)
-        return updated_agent
+        return update_agent_config(db, agent_id, update_data)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -140,23 +108,18 @@ def update_agent(
 @router.delete("/agents/{agent_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Agents"])
 @limiter.limit("30 per hour")
 def delete_agent(
-    request,
+    request: Request,
     agent_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Delete an agent configuration.
-    
-    User can only delete their own agents.
-    """
+    """Delete an agent configuration."""
     agent = get_agent_config(db, agent_id)
     if not agent:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
     
-    # Security: Ensure user owns this agent
     if agent.user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this agent")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     
     from app.crud.agents_crud import delete_agent_config
     delete_agent_config(db, agent_id)

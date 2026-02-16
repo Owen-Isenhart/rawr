@@ -8,6 +8,12 @@ class PostCreate(BaseModel):
     content: str
     category: str
 
+class PostUpdate(BaseModel):
+    """Allows Partial<Post> updates from frontend."""
+    title: Optional[str] = None
+    content: Optional[str] = None
+    category: Optional[str] = None
+
 class PostRead(BaseModel):
     id: UUID
     author_id: UUID
@@ -20,7 +26,7 @@ class PostRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class CommentCreate(BaseModel):
-    post_id: UUID
+    """post_id is removed because it's passed in the URL path."""
     content: str
     parent_id: Optional[UUID] = None
 

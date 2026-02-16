@@ -10,8 +10,10 @@ from datetime import timedelta
 from app.core.database import get_db
 from app.core.security import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from app.core.rate_limiter import limiter
+from app.api.v1.deps import get_current_user
 from app.services.user_service import UserService
 from app.dto.user_dto import UserCreate, UserRead, UserLogin
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -118,3 +120,15 @@ def login(
             "email": user.email
         }
     }
+
+
+@router.get("/me", response_model=UserRead, tags=["Authentication"])
+def get_current_user_profile(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get the current authenticated user's profile.
+    
+    Requires a valid JWT token in the Authorization header.
+    """
+    return current_user

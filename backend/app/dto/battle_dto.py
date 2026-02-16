@@ -3,8 +3,14 @@ from uuid import UUID
 from datetime import datetime
 from typing import List, Optional
 
+class AgentSelection(BaseModel):
+    """Matches the frontend '{ agent_id: string }' structure."""
+    agent_id: UUID
+
 class MatchCreate(BaseModel):
-    agent_config_ids: List[UUID] # The agents the user wants to put in the arena
+    """Aligned with frontend BattleRequest."""
+    player_agents: List[AgentSelection]
+    opponent_agents: List[AgentSelection]
 
 class MatchRead(BaseModel):
     id: UUID

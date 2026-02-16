@@ -53,7 +53,7 @@ export async function apiCall<T>(
     if (response.status === 401) {
       if (typeof window !== "undefined") {
         localStorage.removeItem("token");
-        window.location.href = "/login";
+        window.location.href = "/auth/login";
       }
     }
     

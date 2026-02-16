@@ -28,7 +28,7 @@ export default function RegisterPage() {
 
     try {
       await register(username, email, password);
-      router.push("auth/login?registered=true");
+      router.push("/login?registered=true");
     } catch (err: any) {
       setError(err.message || "registration failed");
     } finally {
