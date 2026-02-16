@@ -20,6 +20,12 @@ class UserCreate(UserBase):
     password: str = Field(..., min_length=8, description="Password must be at least 8 characters")
 
 
+class UserLogin(BaseModel):
+    """User login schema for JSON requests."""
+    username: str
+    password: str
+
+
 class UserRead(UserBase):
     """User profile read schema."""
     id: UUID

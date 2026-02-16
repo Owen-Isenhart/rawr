@@ -4,7 +4,6 @@ Authentication endpoints for user registration and login.
 import re
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Request
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 
@@ -12,7 +11,7 @@ from app.core.database import get_db
 from app.core.security import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from app.core.rate_limiter import limiter
 from app.services.user_service import UserService
-from app.dto.user_dto import UserCreate, UserRead
+from app.dto.user_dto import UserCreate, UserRead, UserLogin
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +26,6 @@ PASSWORD_REGEX = re.compile(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d!@#$%^&*()
 def validate_password(password: str) -> bool:
     """
     Validate password strength.
-    
-    Requirements:
-    - Between 8 and 72 characters
-    - At least one uppercase letter
-    - At least one lowercase letter
-    - At least one digit
     """
     if len(password) > PASSWORD_MAX_LENGTH:
         return False
@@ -52,23 +45,13 @@ def register(
     user_in: UserCreate, 
     db: Session = Depends(get_db)
 ):
-    """
-    Register a new user account.
-    
-    Password requirements:
-    - Minimum 8 characters, maximum 72
-    - At least one uppercase letter
-    - At least one lowercase letter
-    - At least one digit
-    """
-    # Validate email format
+    """Register a new user account."""
     if not validate_email(user_in.email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid email format"
         )
     
-    # Validate password strength
     if not validate_password(user_in.password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -77,14 +60,12 @@ def register(
     
     user_service = UserService(db)
     
-    # Check if email already exists
     if user_service.get_user_by_email(user_in.email):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="A user with this email already exists"
         )
     
-    # Check if username already exists
     if user_service.get_user_by_username(user_in.username):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -105,27 +86,23 @@ def register(
 @limiter.limit("5 per minute")
 def login(
     request: Request,
-    form_data: OAuth2PasswordRequestForm = Depends(), 
+    login_data: UserLogin, 
     db: Session = Depends(get_db)
 ):
     """
-    Login with username and password.
-    
-    Returns JWT access token for subsequent authenticated requests.
+    Login with username and password (JSON).
     """
     user_service = UserService(db)
-    user = user_service.authenticate_user(form_data.username, form_data.password)
+    user = user_service.authenticate_user(login_data.username, login_data.password)
     
     if not user:
-        # Don't reveal whether username or password was wrong (security best practice)
-        logger.warning(f"Failed login attempt for username: {form_data.username}")
+        logger.warning(f"Failed login attempt for username: {login_data.username}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
             headers={"WWW-Authenticate": "Bearer"}
         )
     
-    # Create access token with custom expiration
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": str(user.id)},
