@@ -1,8 +1,24 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
+// --- Types & Interfaces ---
+
 interface RequestOptions extends RequestInit {
   throwOnError?: boolean;
 }
+
+export interface AgentConfig {
+  name: string;
+  system_prompt: string;
+  base_model_id: string;
+  temperature: number;
+}
+
+export interface BattleRequest {
+  player_agents: Array<{ agent_id: string }>;
+  opponent_agents: Array<{ agent_id: string }>;
+}
+
+// --- Base API Helper ---
 
 export async function apiCall<T>(
   endpoint: string,
@@ -16,13 +32,11 @@ export async function apiCall<T>(
     "Content-Type": "application/json",
   };
   
-  // Add existing headers
   if (fetchOptions.headers) {
     const existingHeaders = fetchOptions.headers as Record<string, string>;
     Object.assign(headers, existingHeaders);
   }
   
-  // Add auth token if available
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("token");
     if (token) {
@@ -36,7 +50,6 @@ export async function apiCall<T>(
       headers,
     });
     
-    // Handle authentication errors
     if (response.status === 401) {
       if (typeof window !== "undefined") {
         localStorage.removeItem("token");
@@ -64,21 +77,22 @@ export async function apiCall<T>(
   }
 }
 
+// --- Authentication ---
+
 export async function login(username: string, password: string) {
-  const formData = new FormData();
-  formData.append("username", username);
-  formData.append("password", password);
-  
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+  // Updated to JSON instead of FormData
+  return apiCall<{
+    access_token: string;
+    token_type: string;
+    user: {
+      id: string;
+      username: string;
+      email: string;
+    };
+  }>("/auth/login", {
     method: "POST",
-    body: formData,
+    body: JSON.stringify({ username, password }),
   });
-  
-  if (!response.ok) {
-    throw new Error("login failed");
-  }
-  
-  return response.json();
 }
 
 export async function register(
@@ -92,11 +106,16 @@ export async function register(
   });
 }
 
+/**
+ * NOTE: /auth/me was not in your Swagger snippet, 
+ * but is included here if your backend supports it.
+ */
 export async function getProfile() {
   return apiCall("/auth/me");
 }
 
-// Agent endpoints
+// --- Agent Management ---
+
 export async function getAgents() {
   return apiCall("/agents/agents");
 }
@@ -105,19 +124,14 @@ export async function getAgent(id: string) {
   return apiCall(`/agents/agents/${id}`);
 }
 
-export async function createAgent(data: {
-  name: string;
-  system_prompt: string;
-  base_model_id: string;
-  temperature: number;
-}) {
+export async function createAgent(data: AgentConfig) {
   return apiCall("/agents/agents", {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
-export async function updateAgent(id: string, data: Partial<any>) {
+export async function updateAgent(id: string, data: Partial<AgentConfig>) {
   return apiCall(`/agents/agents/${id}`, {
     method: "PATCH",
     body: JSON.stringify(data),
@@ -134,35 +148,38 @@ export async function getModels() {
   return apiCall("/agents/models");
 }
 
-// Battle endpoints
-export async function startBattle(data: {
-  player_agents: Array<{ agent_id: string }>;
-  opponent_agents: Array<{ agent_id: string }>;
-}) {
-  return apiCall("/battle/start", {
+// --- Battle Arena ---
+
+export async function startBattle(data: BattleRequest) {
+  // Corrected path: /battles/start
+  return apiCall("/battles/start", {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
-export async function getBattleStatus(id: string) {
-  return apiCall(`/battle/battles/${id}`);
+export async function getBattleStatus(matchId: string) {
+  // Corrected path: /battles/matches/{match_id}
+  return apiCall(`/battles/matches/${matchId}`);
 }
 
-export async function getBattleLogs(id: string, skip = 0, limit = 100) {
+export async function getBattleLogs(matchId: string, skip = 0, limit = 100) {
+  // Corrected path: /battles/matches/{match_id}/logs
   return apiCall(
-    `/battle/battles/${id}/logs?skip=${skip}&limit=${limit}`
+    `/battles/matches/${matchId}/logs?skip=${skip}&limit=${limit}`
   );
 }
 
 export async function getBattleLeaderboard(limit = 10) {
-  return apiCall(`/battle/leaderboard?limit=${limit}`);
+  // Corrected path: /battles/leaderboard
+  return apiCall(`/battles/leaderboard?limit=${limit}`);
 }
 
-// Community endpoints
+// --- Community Forum ---
+
 export async function getPosts(category?: string, skip = 0, limit = 20) {
-  let url = "/community/posts?skip=" + skip + "&limit=" + limit;
-  if (category) url += "&category=" + category;
+  let url = `/community/posts?skip=${skip}&limit=${limit}`;
+  if (category) url += `&category=${category}`;
   return apiCall(url);
 }
 
@@ -178,7 +195,6 @@ export async function createPost(data: {
   return apiCall("/community/posts", {
     method: "POST",
     body: JSON.stringify(data),
-    throwOnError: true,
   });
 }
 
@@ -201,8 +217,8 @@ export async function likePost(id: string) {
   });
 }
 
-export async function createComment(id: string, content: string) {
-  return apiCall(`/community/posts/${id}/comments`, {
+export async function createComment(postId: string, content: string) {
+  return apiCall(`/community/posts/${postId}/comments`, {
     method: "POST",
     body: JSON.stringify({ content }),
   });
