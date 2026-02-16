@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import NavBar from "@/components/NavBar";
 import { Card } from "@/components/ui";
-import { getBattleLeaderboard, getCommunityLeaderboard } from "@/lib/api";
+import { getCommunityLeaderboard } from "@/lib/api";
 
 interface LeaderboardEntry {
   rank?: number;
@@ -16,9 +16,6 @@ interface LeaderboardEntry {
 }
 
 export default function LeaderboardPage() {
-  const [battleLeaderboard, setBattleLeaderboard] = useState<
-    LeaderboardEntry[]
-  >([]);
   const [communityLeaderboard, setCommunityLeaderboard] = useState<
     LeaderboardEntry[]
   >([]);
@@ -31,11 +28,7 @@ export default function LeaderboardPage() {
 
   const loadLeaderboards = async () => {
     try {
-      const [battleData, communityData] = await Promise.all([
-        getBattleLeaderboard(100),
-        getCommunityLeaderboard(100),
-      ]);
-      setBattleLeaderboard((battleData as LeaderboardEntry[]) || []);
+      const communityData = await getCommunityLeaderboard(100);
       setCommunityLeaderboard((communityData as LeaderboardEntry[]) || []);
     } catch (err) {
       console.error("failed to load leaderboards:", err);
@@ -44,8 +37,7 @@ export default function LeaderboardPage() {
     }
   };
 
-  const leaderboard =
-    activeTab === "battle" ? battleLeaderboard : communityLeaderboard;
+  const leaderboard = communityLeaderboard;
 
   return (
     <>
@@ -64,12 +56,12 @@ export default function LeaderboardPage() {
               className="text-sm"
               style={{ color: "var(--text-gray)" }}
             >
-              &gt;&gt; top hackers and contributors
+              &gt;&gt; top hackers
             </p>
           </div>
 
           {/* Tab Buttons */}
-          <div className="flex gap-2">
+          {/* <div className="flex gap-2">
             <button
               onClick={() => setActiveTab("battle")}
               className="px-4 py-2 border text-sm font-mono"
@@ -104,7 +96,7 @@ export default function LeaderboardPage() {
             >
               community
             </button>
-          </div>
+          </div> */}
 
           {/* Leaderboard Table */}
           {loading ? (
@@ -122,25 +114,13 @@ export default function LeaderboardPage() {
                   <div style={{ color: "var(--text-green-subtle)" }}>
                     username
                   </div>
-                  {activeTab === "battle" ? (
-                    <>
-                      <div style={{ color: "var(--text-green-subtle)" }}>
+                  
+                  <div style={{ color: "var(--text-green-subtle)" }}>
                         wins
                       </div>
                       <div style={{ color: "var(--text-green-subtle)" }}>
                         points
                       </div>
-                    </>
-                  ) : (
-                    <>
-                      <div style={{ color: "var(--text-green-subtle)" }}>
-                        posts
-                      </div>
-                      <div style={{ color: "var(--text-green-subtle)" }}>
-                        likes
-                      </div>
-                    </>
-                  )}
                 </div>
               </Card>
 
@@ -157,25 +137,12 @@ export default function LeaderboardPage() {
                     <div style={{ color: "var(--text-green)" }}>
                       {entry.username}
                     </div>
-                    {activeTab === "battle" ? (
-                      <>
-                        <div style={{ color: "var(--text-green-dim)" }}>
+                    <div style={{ color: "var(--text-green-dim)" }}>
                           {entry.wins || 0} wins
                         </div>
                         <div style={{ color: "var(--text-green-dim)" }}>
                           {entry.rank_points || 0} pts
                         </div>
-                      </>
-                    ) : (
-                      <>
-                        <div style={{ color: "var(--text-green-dim)" }}>
-                          {entry.post_count || 0} posts
-                        </div>
-                        <div style={{ color: "var(--text-green-dim)" }}>
-                          {entry.total_likes || 0} likes
-                        </div>
-                      </>
-                    )}
                   </div>
                 </Card>
               ))}

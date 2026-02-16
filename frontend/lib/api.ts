@@ -179,11 +179,6 @@ export async function getBattleLogs(matchId: string, skip = 0, limit = 100) {
   );
 }
 
-export async function getBattleLeaderboard(limit = 10) {
-  // Corrected path: /battles/leaderboard
-  return apiCall(`/battles/leaderboard?limit=${limit}`);
-}
-
 // --- Community Forum ---
 
 export async function getPosts(category?: string, skip = 0, limit = 20) {
