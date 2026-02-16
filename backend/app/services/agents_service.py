@@ -9,6 +9,7 @@ from app.dto.agents_dto import AgentConfigCreate
 from app.crud.agents_crud import (
     create_agent_config, 
     get_llm_models,
+    get_llm_model,
     get_agent_config
 )
 
@@ -38,7 +39,7 @@ class AgentService:
             raise ValueError("System prompt must be at least 10 characters long")
         
         # Validate that the model exists
-        base_model = get_agent_config(db, config_in.base_model_id)
+        base_model = get_llm_model(db, config_in.base_model_id)
         if not base_model:
             raise ValueError("Selected model does not exist")
         

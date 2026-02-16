@@ -4,7 +4,6 @@ Data Transfer Objects for agent and model configuration endpoints.
 from pydantic import BaseModel, ConfigDict, Field
 from uuid import UUID
 from typing import Optional
-from decimal import Decimal
 
 
 class LLMModelCreate(BaseModel):
@@ -30,7 +29,7 @@ class AgentConfigCreate(BaseModel):
     base_model_id: UUID = Field(..., description="ID of the base LLM model")
     name: str = Field(..., min_length=1, max_length=100)
     system_prompt: str = Field(..., min_length=10, description="Custom system instructions")
-    temperature: Decimal = Field(default=0.7, ge=0.0, le=2.0)
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
 
 
 class AgentConfigRead(BaseModel):
@@ -40,7 +39,7 @@ class AgentConfigRead(BaseModel):
     base_model_id: Optional[UUID]
     name: str
     system_prompt: str
-    temperature: Decimal
+    temperature: float
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -49,4 +48,4 @@ class AgentConfigUpdate(BaseModel):
     """Schema for updating agent configuration."""
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     system_prompt: Optional[str] = Field(None, min_length=10)
-    temperature: Optional[Decimal] = Field(None, ge=0.0, le=2.0)
+    temperature: Optional[float] = Field(None, ge=0.0, le=2.0)
