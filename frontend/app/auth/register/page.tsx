@@ -28,7 +28,7 @@ export default function RegisterPage() {
 
     try {
       await register(username, email, password);
-      router.push("/login?registered=true");
+      router.push("auth/login?registered=true");
     } catch (err: any) {
       setError(err.message || "registration failed");
     } finally {
@@ -174,7 +174,7 @@ export default function RegisterPage() {
           >
             already have an account?{" "}
             <Link
-              href="/login"
+              href="/auth/login"
               style={{ color: "var(--text-green)" }}
               className="hover:opacity-80"
             >

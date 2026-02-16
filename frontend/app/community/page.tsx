@@ -40,7 +40,7 @@ export default function CommunityPage() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
-      router.push("/login");
+      router.push("/auth/login");
       return;
     }
 

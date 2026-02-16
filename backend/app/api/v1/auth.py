@@ -3,7 +3,7 @@ Authentication endpoints for user registration and login.
 """
 import re
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
@@ -20,7 +20,8 @@ router = APIRouter()
 
 # Password validation rules
 PASSWORD_MIN_LENGTH = 8
-PASSWORD_REGEX = re.compile(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d!@#$%^&*()_+\-=\[\]{};:,.<>?]{8,}$")
+PASSWORD_MAX_LENGTH = 72  # Bcrypt hard limit is 72 bytes
+PASSWORD_REGEX = re.compile(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d!@#$%^&*()_+\-=\[\]{};:,.<>?]{8,72}$")
 
 
 def validate_password(password: str) -> bool:
@@ -28,11 +29,13 @@ def validate_password(password: str) -> bool:
     Validate password strength.
     
     Requirements:
-    - At least 8 characters
+    - Between 8 and 72 characters
     - At least one uppercase letter
     - At least one lowercase letter
     - At least one digit
     """
+    if len(password) > PASSWORD_MAX_LENGTH:
+        return False
     return bool(PASSWORD_REGEX.match(password))
 
 
@@ -45,7 +48,7 @@ def validate_email(email: str) -> bool:
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED, tags=["Authentication"])
 @limiter.limit("5 per minute")
 def register(
-    request,
+    request: Request,
     user_in: UserCreate, 
     db: Session = Depends(get_db)
 ):
@@ -53,7 +56,7 @@ def register(
     Register a new user account.
     
     Password requirements:
-    - Minimum 8 characters
+    - Minimum 8 characters, maximum 72
     - At least one uppercase letter
     - At least one lowercase letter
     - At least one digit
@@ -69,7 +72,7 @@ def register(
     if not validate_password(user_in.password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must be at least 8 characters with uppercase, lowercase, and number"
+            detail=f"Password must be 8-{PASSWORD_MAX_LENGTH} characters with uppercase, lowercase, and number"
         )
     
     user_service = UserService(db)
@@ -101,7 +104,7 @@ def register(
 @router.post("/login", tags=["Authentication"])
 @limiter.limit("5 per minute")
 def login(
-    request,
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(), 
     db: Session = Depends(get_db)
 ):

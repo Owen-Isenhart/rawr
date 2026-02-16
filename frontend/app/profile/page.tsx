@@ -30,7 +30,7 @@ export default function ProfilePage() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
-      router.push("/login");
+      router.push("/auth/login");
       return;
     }
 
@@ -43,7 +43,7 @@ export default function ProfilePage() {
       setProfile(data as UserProfile | null);
     } catch (err) {
       console.error("failed to load profile:", err);
-      router.push("/login");
+      router.push("/auth/login");
     } finally {
       setLoading(false);
     }
