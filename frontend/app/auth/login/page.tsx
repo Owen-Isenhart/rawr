@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import NavBar from "@/components/NavBar";
 import { login } from "@/lib/api";
@@ -10,8 +10,16 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("registered") === "true") {
+      setSuccess("registration successful! please log in.");
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,6 +98,15 @@ export default function LoginPage() {
                 required
               />
             </div>
+
+            {success && (
+              <p
+                className="text-sm"
+                style={{ color: "var(--text-green)" }}
+              >
+                ✓ {success}
+              </p>
+            )}
 
             {error && (
               <p
