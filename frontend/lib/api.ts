@@ -100,18 +100,27 @@ export async function register(
   email: string,
   password: string
 ) {
-  return apiCall("/auth/register", {
+  return apiCall<{
+    id: string;
+    username: string;
+    email: string;
+  }>("/auth/register", {
     method: "POST",
     body: JSON.stringify({ username, email, password }),
   });
 }
 
 /**
- * NOTE: /auth/me was not in your Swagger snippet, 
- * but is included here if your backend supports it.
+ * Get the current authenticated user's profile.
  */
 export async function getProfile() {
-  return apiCall("/auth/me");
+  return apiCall<{
+    id: string;
+    username: string;
+    email: string;
+    bio?: string;
+    avatar_url?: string;
+  }>("/auth/me");
 }
 
 // --- Agent Management ---
