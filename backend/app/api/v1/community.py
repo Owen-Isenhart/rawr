@@ -12,6 +12,7 @@ from app.api.v1.deps import get_current_user
 from app.services.community_service import CommunityService
 from app.models.user import User
 from app.dto.community_dto import PostCreate, PostRead, CommentCreate
+from app.dto.user_dto import LeaderboardEntry
 from app.crud.community_crud import (
     get_posts_by_category,
     get_post_by_id
@@ -169,7 +170,7 @@ def create_comment(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.get("/leaderboard", tags=["Community"])
+@router.get("/leaderboard", response_model=List[LeaderboardEntry], tags=["Community"])
 @limiter.limit("30 per minute")
 def get_leaderboard(
     request: Request,

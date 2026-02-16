@@ -61,3 +61,8 @@ class UserStats(Base):
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
     user = relationship("User", back_populates="stats")
+
+    @property
+    def username(self):
+        """Proxy username from user relationship."""
+        return self.user.username if self.user else "Unknown"

@@ -34,6 +34,7 @@ class UserRead(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+
 class UserStatsRead(BaseModel):
     """User statistics and rankings."""
     wins: int
@@ -41,5 +42,12 @@ class UserStatsRead(BaseModel):
     matches_played: int
     total_hacks: int
     rank_points: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LeaderboardEntry(UserStatsRead):
+    """Leaderboard entry with user details."""
+    username: str
 
     model_config = ConfigDict(from_attributes=True)
