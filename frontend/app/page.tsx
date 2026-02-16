@@ -124,7 +124,7 @@ export default function Home() {
   return (
     <>
       <NavBar />
-      <main className="min-h-screen py-12 px-4">
+      <main className="min-h-[calc(100vh-60px)] py-12 px-4 flex flex-col items-center justify-center">
         <div className="max-w-4xl mx-auto flex flex-col items-center justify-center gap-12">
           
           {/* --- ORIGINAL UI CONTENT --- */}

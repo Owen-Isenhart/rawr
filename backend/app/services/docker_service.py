@@ -3,6 +3,7 @@ Docker service for spawning and managing isolated agent containers.
 """
 import docker
 import logging
+import shlex
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -65,29 +66,50 @@ class DockerService:
                 net_config["IPAddress"] = ip_address
             
             container = self.client.containers.run(
-                image="kalilinux/kali-rolling",
+                image="rawr-agent:latest",  # Custom image with tools and vulnerabilities
                 name=agent_name,
                 network=network_name,
                 detach=True,
                 tty=True,
                 cap_add=["NET_ADMIN", "SYS_ADMIN"],  # Required for hacking tools
                 cap_drop=["ALL"],  # Drop all others for security
-                read_only=True,  # Filesystem read-only by default
-                tmpfs=["/tmp", "/run"],  # Temporary filesystems for runtime
+                read_only=False,  # Must be writable for tools and flag deletion
+                # tmpfs removed as we have write access now, or keep for performance? 
+                # Keeping tmpfs for specific dirs might overwrite our pre-seeded files if not careful.
+                # Safest to rely on container filesystem for now.
                 cpu_quota=100000,  # Limit CPU
-                mem_limit="512m",  # Limit memory
-                command="sleep infinity"
+                mem_limit="1024m",  # increased memory for tools like hydra/sqlmap
+                command=None  # Use image entrypoint
             )
             
             logger.info(f"Spawned container {agent_name}: {container.id[:12]}")
             return container
             
         except docker.errors.ImageNotFound:
-            logger.error(f"Docker image not found: kalilinux/kali-rolling")
-            raise RuntimeError("Required Docker image not available")
+            logger.error(f"Docker image 'rawr-agent:latest' not found. Please run scripts/build_agent_image.sh")
+            raise RuntimeError("Agent image not found - run build script first")
         except docker.errors.APIError as e:
             logger.error(f"Failed to spawn container {agent_name}: {e}")
             raise
+
+    def check_file_exists(self, container_id: str, file_path: str) -> bool:
+        """
+        Check if a file exists inside the container.
+        
+        Args:
+            container_id: Container ID
+            file_path: Absolute path to file
+            
+        Returns:
+            True if exists, False otherwise
+        """
+        try:
+            container = self.client.containers.get(container_id)
+            exit_code, _ = container.exec_run(f"test -f {file_path}")
+            return exit_code == 0
+        except Exception as e:
+            logger.error(f"Failed to check file in {container_id}: {e}")
+            return False
 
     def execute_hacking_command(self, container_id: str, cmd: str) -> str:
         """
@@ -102,11 +124,12 @@ class DockerService:
         """
         try:
             container = self.client.containers.get(container_id)
+            # Use 'bash -c' to handle pipes and complex commands properly
             exit_code, output = container.exec_run(
-                cmd,
+                f"bash -c {shlex.quote(cmd)}",
                 stdout=True,
                 stderr=True,
-                timeout=30
+                timeout=60
             )
             
             output_str = output.decode("utf-8", errors="ignore")

@@ -1,0 +1,42 @@
+FROM kalilinux/kali-rolling
+
+# Avoid interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install tools and services
+RUN apt-get update && apt-get install -y \
+    nmap \
+    hydra \
+    sqlmap \
+    gobuster \
+    sshpass \
+    openssh-server \
+    mariadb-server \
+    apache2 \
+    php \
+    php-mysql \
+    iputils-ping \
+    net-tools \
+    curl \
+    wget \
+    vim \
+    procps \
+    wordlists \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Fix for MariaDB runtime
+RUN mkdir -p /var/run/mysqld && chown mysql:mysql /var/run/mysqld
+
+# Copy Web Assets
+COPY agent_assets/ /var/www/html/
+RUN rm /var/www/html/index.html && mv /var/www/html/index.html /var/www/html/index.php || true
+RUN chmod -R 755 /var/www/html
+
+# Copy Entrypoint
+COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Expose ports
+EXPOSE 22 80
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

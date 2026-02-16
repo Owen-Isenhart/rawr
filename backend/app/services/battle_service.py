@@ -150,14 +150,6 @@ class BattleService:
                             # Log the action
                             log_action(self.db, p["record"].id, cmd, output, success)
                             
-                            # Check if opponent die (very basic check for now)
-                            if self._check_opponent_death(success, output):
-                                other_agents = [x for x in alive_participants if x["record"].id != p["record"].id]
-                                if other_agents:
-                                    target_agent = other_agents[0]
-                                    eliminate_participant(self.db, target_agent["record"].id)
-                                    logger.info(f"Agent {target_agent['record'].id} eliminated by {p['record'].id}")
-                        
                         except Exception as e:
                             logger.error(f"Failed to execute command for agent {p['record'].id}: {e}")
                             log_action(self.db, p["record"].id, cmd, str(e), False)
@@ -166,6 +158,18 @@ class BattleService:
                         logger.warning(f"AI decision timeout for agent {p['record'].id}")
                     except Exception as e:
                         logger.error(f"Error processing turn for agent {p['record'].id}: {e}")
+
+                # Post-Turn: Check for eliminations (Flag Deletion)
+                # We re-fetch alive participants to ensure we don't process already dead ones if logic changes
+                current_alive = [p for p in participants if p["record"].is_alive]
+                for p in current_alive:
+                    # Check if their flag still exists
+                    has_flag = self.docker.check_file_exists(p["record"].container_id, "/flag.txt")
+                    
+                    if not has_flag:
+                        logger.info(f"Agent {p['record'].id} LOST THEIR FLAG! Eliminating.")
+                        eliminate_participant(self.db, p["record"].id)
+                        p["record"].is_alive = False  # Update local state
 
             # 4. Determine and record winner
             final_alive = get_alive_participants(self.db, match_id)
@@ -218,17 +222,14 @@ class BattleService:
         return "\\n".join(targets) if targets else "No targets available"
 
     def _evaluate_command_success(self, command: str, output: str) -> bool:
-        """Basic evaluation of whether a command succeeded (can be enhanced)."""
-        # Check for common success indicators
-        if "root@" in output or "uid=0" in output:
-            return True
-        if "error" in output.lower() or "failed" in output.lower():
+        """Basic evaluation of whether a command succeeded."""
+        # We assume success unless we see obvious shell errors
+        # This is purely for logging; the real success is deleting the flag
+        lower_out = output.lower()
+        if "command not found" in lower_out:
             return False
-        # More sophisticated analysis could go here
+        if "permission denied" in lower_out:
+            return False
+        if "error" in lower_out and "server" not in lower_out: # avoid matching "Server Error" in html
+             return False
         return True
-
-    def _check_opponent_death(self, success: bool, output: str) -> bool:
-        """Check if an opponent was eliminated (ultra-simplified for now)."""
-        if success and "root@" in output:
-            return True
-        return False
